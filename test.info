@@ -1,0 +1,5 @@
+name = Test module
+description = A list of the last 5 articles containing Invention in their title.
+core = 7.x
+package = custom
+dependencies[] = node

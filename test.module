@@ -1,0 +1,91 @@
+<?php
+
+/**
+ * @file
+ * Display a block meeting the provided criteria.
+ */
+
+/**
+ * Implements hook_block_info().
+ */
+function test_block_info() {
+  $blocks['test_block'] = [
+    'info' => t('Test block'),
+    'status' => TRUE,
+    'cache' => DRUPAL_NO_CACHE,
+  ];
+
+  return $blocks;
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function test_block_view($delta = '') {
+
+  // Obtain the 5 most recent, published articles that have
+  // "Invention" in their title.
+  $query = new EntityFieldQuery();
+
+  $query->entityCondition('entity_type', 'node')
+    ->entityCondition('bundle', 'article')
+    ->propertyCondition('title', 'Invention', 'CONTAINS')
+    ->propertyCondition('status', NODE_PUBLISHED)
+    ->propertyOrderBy('changed', 'DESC')
+    ->range(0, 5);
+
+  $result = $query->execute();
+
+  if (empty($result)) {
+    return [
+      'subject' => t('Recent Invention Articles'),
+      'content' => [
+        '#markup' => t('No recent Invention articles were found, sorry.'),
+      ],
+    ];
+  }
+
+  $nids = array_keys($result['node']);
+  $nodes = entity_load('node', $nids);
+
+  $items = [];
+
+  for ($i = 0; $i < count($nodes); $i++) {
+    $nid = $nids[$i];
+    $node = $nodes[$nid];
+    $body = $node->body[LANGUAGE_NONE][0];
+    $item = [
+      'title' => $node->title,
+      'date' => format_date($node->changed),
+      'summary' => check_plain($body['summary'] ? $body['summary'] : $body['value']),
+    ];
+
+    $items[] = $item;
+  }
+
+  $result = [
+    'subject' => t('Recent Invention Articles'),
+    'content' => theme('block_of_cards', [
+        'elements' => [
+          'items' => $items,
+        ],
+      ]
+    ),
+  ];
+
+  return $result;
+}
+
+/**
+ * Implements hook_theme().
+ */
+function test_theme($existing, $type, $theme, $path) {
+  $theme = [];
+  $theme['block_of_cards'] = [
+    'render element' => 'content',
+    'template' => 'block-of-cards',
+    'path' => drupal_get_path('module', 'test') . '/templates',
+    'variables' => ['items' => []],
+  ];
+  return $theme;
+}
